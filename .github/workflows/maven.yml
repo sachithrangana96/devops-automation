@@ -52,7 +52,7 @@ jobs:
 
     - name: Debug environment values
       run: |
-         echo "ECR_REPOSITORY: ${{ secrets.AWS_REGION }}s"
+         echo "ECR_REPOSITORY: ${{ secrets.AWS_ACCESS_KEY_ID }}"
          echo "ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}"
 
     - name: Build, tag, and push image to Amazon ECR
