@@ -63,13 +63,46 @@ jobs:
           docker build -t ${{ env.IMAGE_NAME }}:latest .
           docker push ${{ env.IMAGE_NAME }}:latest
 
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: render-container
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition.json
-        container-name: $CONTAINER_NAME
-        image: ${{ env.IMAGE_NAME }}:latest
+#    - name: Fill in the new image ID in the Amazon ECS task definition
+#      id: render-container
+#      uses: aws-actions/amazon-ecs-render-task-definition@v1
+#      with:
+#        task-definition: task-definition.json
+#        container-name: $CONTAINER_NAME
+#        image: ${{ env.IMAGE_NAME }}:latest
+
+      # **Get the latest task definition JSON from AWS**
+    - name: Get current task definition
+      id: taskdef
+      run: |
+        aws ecs describe-task-definition --task-definition my-test-app-td > taskdef.json
+        
+      # **Update image in the JSON**
+    - name: Update image tag in task definition
+      id: new-taskdef
+      run: |
+            IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/my-test-app:${{ github.sha }}"
+            jq --arg IMAGE "$IMAGE_URI" '.taskDefinition.containerDefinitions[0].image = $IMAGE' taskdef.json > new-taskdef.json
+
+      # **Register new task definition**
+    - name: Register new task definition
+      id: register-task
+      run: |
+         NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+              --cli-input-json file://new-taskdef.json \
+              --query "taskDefinition.taskDefinitionArn" --output text)
+            echo "taskdef_arn=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+        
+        
+      # **Update ECS service to use new task definition**
+    - name: Deploy to ECS
+      run: |
+          aws ecs update-service \
+              --cluster my-test-app-123 \
+              --service my-test-app-td-service-aqojwmj6 \
+              --task-definition ${{ steps.register-task.outputs.taskdef_arn }} \
+              --force-new-deployment   
+
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
