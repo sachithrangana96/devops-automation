@@ -84,6 +84,7 @@ jobs:
       run: |
             jq --arg IMAGE "$IMAGE_NAME:$IMAGE_TAG" '.taskDefinition.containerDefinitions[0].image = $IMAGE' taskdef.json > new-taskdef.json
             cat new-taskdef.json
+            ls -la
 
       # **Register new task definition**
     - name: Register new task definition
