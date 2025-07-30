@@ -16,11 +16,11 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
   ECS_CLUSTER: ${{ secrets.ECS_CLUSTER_NAME }}
   ECS_SERVICE: ${{ secrets.ECS_SERVICE_NAME }}
   ECS_TASK_DEFINITION: ${{ secrets.ECS_TASK_DEFINITION_NAME }}
   CONTAINER_NAME: ${{ secrets.CONTAINER_NAME }} # Name of the container in your task definition
+  IMAGE_NAME: "140023365638.dkr.ecr.us-east-1.amazonaws.com/sachith/my-test-app"
 
 
 jobs:
@@ -60,9 +60,8 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
       run: |
-          docker build -t $ECR_REGISTRY/$CONTAINER_NAME .
-          docker push $ECR_REGISTRY/$CONTAINER_NAME
-          echo "image=$ECR_REGISTRY/$CONTAINER_NAME" >> $GITHUB_OUTPUT
+          docker build -t ${{ env.IMAGE_NAME }}:latest .
+          docker push ${{ env.IMAGE_NAME }}:latest
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: render-container
@@ -70,7 +69,7 @@ jobs:
       with:
         task-definition: task-definition.json
         container-name: $CONTAINER_NAME
-        image: ${{ steps.build-image.outputs.image }}
+        image: ${{ env.IMAGE_NAME }}:latest
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
